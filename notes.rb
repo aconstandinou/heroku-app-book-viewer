@@ -153,3 +153,55 @@ end
   (Bonus). The chapter text is not very legible right now.
            Well come back to this in a future assignment, but can you think of a
            way to improve its display?
+
+################################ USING LAYOUTS ################################
+
+- there was a lot of duplication between chapter.erb and home.erb (views directory)
+- to alleviate this, we created a 'layout.erb' file within same directory that if
+  present, will override the other files.
+- key here was to introduce yield on line 39, and indicates where the content
+  from the view template will end up.
+
+new files
+
+# "views/home.erb"
+<h2 class="content-subhead">Table of Contents</h2>
+
+<div class="pure-menu">
+  <ul class="pure-menu-list">
+    <% @contents.each do |chapter| %>
+      <li class="pure-menu-item">
+        <a href="#" class="pure-menu-link"><%= chapter %></a>
+      </li>
+    <% end %>
+  </ul>
+</div>
+
+# "chapter.erb"
+<h2 class="content-subhead">Chapter 1</h2>
+
+<%= @chapter %>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.
