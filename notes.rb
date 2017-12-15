@@ -165,6 +165,7 @@ end
 new files
 
 # "views/home.erb"
+=begin
 <h2 class="content-subhead">Table of Contents</h2>
 
 <div class="pure-menu">
@@ -181,25 +182,201 @@ new files
 <h2 class="content-subhead">Chapter 1</h2>
 
 <%= @chapter %>
+=end
+################################ ROUTE PARAMETERS ################################
 
+- now we need to add each chapter to our book.
+Step 1) add new routes and that requires a lot of duplication
+with Sinatra this...
 
+get "chapters/1" do end
+get "chapters/2" do end
+get "chapters/3" do end
 
+can be replaced with this...
 
+get "/chapters/:number" do end
 
+This will match any route that starts with "/chapters/" followed by a single
+  segment. This segment will be an identifier to indicate which chapter to view.
+  Values passed to the application through the URL in this way appear in the
+  params Hash that is automatically made available in routes
 
+  get "/chapters/:number" do
+    @contents = File.readlines("data/toc.txt")
 
+    number = params[:number]
+    @title = "Chapter #{number}"
 
+    @chapter = File.read("data/chp#{number}.txt")
 
+    erb :chapter
+  end
 
+Update the links in views/layout.erb and views/home.erb to link to the new book pages.
 
+<ul class="pure-menu-list">
+  <% @contents.each_with_index do |chapter, index| %>
+    <li class="pure-menu-item">
+      <a href="/chapters/<%= index + 1 %>" class="pure-menu-link"><%= chapter %></a>
+    </li>
+  <% end %>
+</ul>
 
+Lets display each chapters title on the chapter page and in the pages title.
+  Make any changes to book_viewer.rb and views/chapter.erb needed in order to do this.
 
+    # Change #1
+    # <!-- views/chapter.erb -->
+    <h2 class="content-subhead"><%= @title %></h2>
 
+    #<%= @chapter %>
 
+    # Change #2
+    # book_viewer.rb
+    get "/chapters/:number" do
+      @contents = File.readlines("data/toc.txt")
 
+      number = params[:number].to_i
+      chapter_name = @contents[number - 1]
+      @title = "Chapter #{number}: #{chapter_name}"
 
+      @chapter = File.read("data/chp#{number}.txt")
 
+      erb :chapter
+    end
 
+################################ BEFORE FILTERS ################################
+
+- notice that we are loading the table of contents in both of our routers.
+get "/" do
+  ...
+  @contents = File.readlines("data/toc.txt")
+  ...
+
+get "/chapter/:number" do
+  @contents = File.readlines("data/toc.txt")
+  ...
+
+- we can move this code into a 'before' filter so that we only define it once.
+- Sinatra will run the code in a 'before' filter before running code in matching
+  route.
+
+  before do
+    @contents = File.readlines("data/toc.txt")
+  end
+
+- code in 'before' filters run before all routes, instance variables defined
+  within it are usually not dependent on which route is being executed
+
+################################ VIEW HELPERS ################################
+
+- so far, none of our whitespace is being used, and chapters are loaded in as
+  full texts with no whitespace.
+
+- 'helper' or 'view helper' come into play. These are methods made available in templates
+  by Sinatra for the purpose of filtering data, processing data or performing some
+  other functionality.
+
+ex:
+helpers do
+  def slugify(text)
+    text.downcase.gsub(/\s+/, "-").gsub(/[^\w-]/, "")
+  end
+end
+
+This can be used like any other method in a template (assuming @title == "Today is the Day"):
+<a href="/articles/<%= slugify(@title) %>"><%= @title %></a>
+
+And will render the expected output:
+<a href="/articles/today-is-the-day">Today is the Day</a>
+
+1. Create a helper method called in_paragraphs. This method should take a
+   string that is the chapter content and return the same string with paragraph
+   tags wrapped around each non-empty line.
+
+It should turn this:
+"Frequently."
+
+"How often?"
+
+"Well, some hundreds of times."
+
+into this:
+
+<p>"Frequently."</p>
+
+<p>"How often?"</p>
+
+<p>"Well, some hundreds of times."</p>
+
+Hint: Split the chapter text using two linebreaks ("\n\n").
+
+# Step 1
+helpers do
+  def in_paragraphs(text)
+    text.split("\n\n").map do |paragraph|
+      "<p>#{paragraph}</p>"
+    end.join
+  end
+end
+
+# Step 2
+# within chapter.erb
+=begin
+<h2 class="content-subhead"><%= @title %></h2>
+
+<%= in_paragraphs(@chapter) %>
+=end
+################################ REDIRECTING ################################
+
+- Goal to learn two things;
+1. How Sinatra handles requests for paths it doesnt have a route for
+2. How to redirect a user to another path
+
+- when reaching the failed page of a Sinatra app. We get the error
+"Sinatra doesn't know this ditty."
+"Try this: ...."
+
+- Essentially its giving us a chance to copy and paste a new route into our main
+  app file.
+
+- Sinatra also provides a special route, 'not_found', that will be executed whenever
+  it cant find any other route to match an incoming request.
+
+  not_found do
+    "That page was not found"
+  end
+
+- Routes dont have to return HTML code that will be returned to users browser.
+  They can also send the browser to a different URL using the 'redirect' method
+
+redirect "/a/good/path"
+
+- 'redirect' method sets the Location header in the HTTP response that is sent
+  back to the client, as well as the status code to a value in the range of 3XX,
+  signifying redirection; codes 301 and 302 are the most commonly used for redirection
+  ... browser confirms that the correct status 3XX status code is there,
+      looks at the value of this header, and then uses that header value to
+      navigate to a new URL.
+
+- Lets do the same, add code to book_viewer.rb to accomplish this.
+
+  # Not found redirect
+  not_found do
+    redirect "/"
+  end
+
+- There are also instances where we have to handle edge cases when accessing an existing route.
+  ex: if we try and access a non-existen book chapter, its not that it is an unknown path
+      as it is a semantically incorrect path.
+      Possible fix;
+
+get "/chapters/:number" do
+  ...
+  redirect "/" unless (1..@contents.size).cover? number
+  ...
+end
 
 
 
