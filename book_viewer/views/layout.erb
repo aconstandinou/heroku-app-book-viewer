@@ -22,6 +22,8 @@
           <ul class="pure-menu-list">
             <% @contents.each_with_index do |chapter, index| %>
               <li class="pure-menu-item">
+                <!--If you recall, <=% allows Ruby code return to be displayed-->
+                <!--hence why index + 1 is rendered to 1 at index 0-->
                 <a href="/chapter/<%= index + 1 %>" class="pure-menu-link"><%= chapter %></a>
               </li>
             <% end %>
@@ -36,6 +38,8 @@
         </div>
 
         <div class="content">
+          <!--Within the context of a layout, yield identifies a section-->
+          <!--where content from the view should be inserted-->
           <%= yield %>
         </div>
       </div>

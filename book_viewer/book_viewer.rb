@@ -45,6 +45,39 @@ get "/chapter/:number" do
   erb :chapter
 end
 
-get "/show/:name" do
-  params[:name]
+# original - just to locate chapters
+# def chapters_matching(query)
+#   list_of_chapters = Hash.new()
+#   return list_of_chapters if !query || query.empty?
+#
+#   (1..12).each do |num|
+#     text_to_read = File.read("data/chp#{num}.txt")
+#     chapter_name = @contents[num - 1]
+#     list_of_chapters[num] = chapter_name if text_to_read.include?(query)
+#   end
+#   list_of_chapters
+# end
+
+# new - locate paragraphs
+def pars_matching(query)
+  hsh_of_pars = Hash.new()
+  return list_of_pars if !query || query.empty?
+
+  (1..12).each do |num|
+    chp_name = @contents[num - 1]
+    text_to_read = File.read("data/chp#{num}.txt")
+    text_to_read.split("\n\n").each do |par|
+      if par.include?(query)
+        (hsh_of_pars[chp_name] ||= []) << [num, par]
+      end
+    end
+  end
+
+  hsh_of_pars
+end
+
+# New code for our search bar
+get "/search" do
+  @list_of_pars = pars_matching(params[:query])
+  erb :search
 end

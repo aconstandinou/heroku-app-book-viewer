@@ -193,14 +193,16 @@ get "chapters/1" do end
 get "chapters/2" do end
 get "chapters/3" do end
 
-can be replaced with this...
+- can be replaced with this and notice the ':number'. This is value passed in via the
+    URL appear in the 'params' hash that is automatically made available in routes.
 
+# code
 get "/chapters/:number" do end
 
-This will match any route that starts with "/chapters/" followed by a single
-  segment. This segment will be an identifier to indicate which chapter to view.
-  Values passed to the application through the URL in this way appear in the
-  params Hash that is automatically made available in routes
+- This will match any route that starts with "/chapters/" followed by a single
+    segment. This segment will be an identifier to indicate which chapter to view.
+    Values passed to the application through the URL in this way appear in the
+    params Hash that is automatically made available in routes
 
   get "/chapters/:number" do
     @contents = File.readlines("data/toc.txt")
@@ -213,7 +215,7 @@ This will match any route that starts with "/chapters/" followed by a single
     erb :chapter
   end
 
-Update the links in views/layout.erb and views/home.erb to link to the new book pages.
+- Update the links in views/layout.erb and views/home.erb to link to the new book pages.
 
 <ul class="pure-menu-list">
   <% @contents.each_with_index do |chapter, index| %>
@@ -223,8 +225,8 @@ Update the links in views/layout.erb and views/home.erb to link to the new book 
   <% end %>
 </ul>
 
-Lets display each chapters title on the chapter page and in the pages title.
-  Make any changes to book_viewer.rb and views/chapter.erb needed in order to do this.
+- Lets display each chapters title on the chapter page and in the pages title.
+    Make any changes to book_viewer.rb and views/chapter.erb needed in order to do this.
 
     # Change #1
     # <!-- views/chapter.erb -->
@@ -247,8 +249,9 @@ Lets display each chapters title on the chapter page and in the pages title.
     end
 
 ################################ BEFORE FILTERS ################################
-
+- There are things that need to be done on every request to an application
 - notice that we are loading the table of contents in both of our routers.
+
 get "/" do
   ...
   @contents = File.readlines("data/toc.txt")
@@ -262,6 +265,7 @@ get "/chapter/:number" do
 - Sinatra will run the code in a 'before' filter before running code in matching
   route.
 
+  # code
   before do
     @contents = File.readlines("data/toc.txt")
   end
@@ -322,7 +326,7 @@ helpers do
 end
 
 # Step 2
-# within chapter.erb
+within chapter.erb
 =begin
 <h2 class="content-subhead"><%= @title %></h2>
 
@@ -330,7 +334,7 @@ end
 =end
 ################################ REDIRECTING ################################
 
-- Goal to learn two things;
+- Goals;
 1. How Sinatra handles requests for paths it doesnt have a route for
 2. How to redirect a user to another path
 
@@ -342,10 +346,11 @@ end
   app file.
 
 - Sinatra also provides a special route, 'not_found', that will be executed whenever
-  it cant find any other route to match an incoming request.
+  it cant find any other route to match an incoming request. Allows us to build
+  custom 'Not found' pages.
 
   not_found do
-    "That page was not found"
+    "That page was not found sucker!"
   end
 
 - Routes dont have to return HTML code that will be returned to users browser.
@@ -368,15 +373,137 @@ redirect "/a/good/path"
   end
 
 - There are also instances where we have to handle edge cases when accessing an existing route.
-  ex: if we try and access a non-existen book chapter, its not that it is an unknown path
+  ex: if we try and access a non-existent book chapter, its not that it is an unknown path
       as it is a semantically incorrect path.
       Possible fix;
 
 get "/chapters/:number" do
   ...
+  # range.cover? returns true if number is found in the range of (1..@contents.size)
   redirect "/" unless (1..@contents.size).cover? number
   ...
 end
+
+############################# ADDING A SEARCH FORM #############################
+
+- So far weve worked with parameters that are extracted from the URL.
+- There are two other ways to get data into the 'params' hash.
+
+1. Using query parameters in the URL.
+2. By submitting a form using a POST request.
+
+- Goal; add a search form that allows a user to find chapters that match a given
+        phrase and covering the first case above.
+
+# Side note
+#   Dont worry about understanding everything about how HTML forms work in this
+#   assignment. We will spend a lot more time looking at these concepts in the front end courses.
+
+#   For now, you need to understand these concepts about how forms work:
+
+# - When a form is submitted, the browser makes a HTTP request.
+# - This request is made to the path or URL specified in the action attribute of the form element.
+# - The method attribute of the form determines if the request made will use GET or POST.
+# - The value of any input elements in the form will be sent as parameters. The keys of these
+#       parameters will be determined by the name attribute of the corresponding input element.
+
+Step 1) Add a new route to '/search' to our app. Within route, render a new template
+        with following HTML
+
+        <h2 class="content-subhead">Search</h2>
+
+        <form action="/search" method="get">
+          <input name="query" value="<%= params[:query] %>">
+          <button type="submit">Search</button>
+        </form>
+
+        # book_viewer.rb : New code for our search bar
+        get "/search" do
+          erb :search
+        end
+
+# Note
+# We're using GET as the method for this form because performing a search doesn't
+# modify any data. If our form submission was modifying data, we would use POST
+# as the form's method.
+
+Step 2) Add some code to the new route that checks if any of the chapters contain
+        whatever text is entered into the search form. Render a list of links to the matching
+        chapters in the template.
+
+        # book_viewer.rb
+        def chapters_matching(query)
+          list_of_chapters = Hash.new()
+          return list_of_chapters if !query || query.empty?
+
+          (1..12).each do |num|
+            text_to_read = File.read("data/chp#{num}.txt")
+            chapter_name = @contents[num - 1]
+            list_of_chapters[num] = chapter_name if text_to_read.include?(query)
+          end
+          list_of_chapters
+        end
+
+        # New code for our search bar
+        get "/search" do
+          @list_of_chapters = chapters_matching(params[:query])
+          erb :search
+        end
+
+        # views/search.erb
+        <h2 class="content-subhead">Search</h2>
+
+        <form action="/search" method="get">
+          <input name="query" value="<%= params[:query] %>">
+          <button type="submit">Search</button>
+        </form>
+
+        <% if params[:query] %>
+
+          <% if @list_of_chapters.empty? %>
+            <p>Sorry, no matches were found.</p>
+          <% else %>
+            <h2 class="content-subhead">Results for '<%= params[:query] %>'</h2>
+
+            <ul>
+              <% @list_of_chapters.each do |key, result| %>
+                <li><a href="/chapters/<%= key %>"><%= result %></a></li>
+              <% end %>
+            </ul>
+          <% end %>
+        <% end %>
+
+
+
+############################## IMPROVING SEARCH ##############################
+
+What to improve;
+1. Instead of listing chapters, update search link to specific paragraphs of the text
+   match. Add 'id' attributes to each paragraph on the chapter page so they can be linked to
+   by including 'id' as the anchor component of the appropriate link.
+
+
+2. Use a view helper to highlight the matching text in each search result by
+   wrapping it in <strong> tags.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
