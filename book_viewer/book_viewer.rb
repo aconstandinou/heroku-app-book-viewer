@@ -58,10 +58,17 @@ end
 #   list_of_chapters
 # end
 
+# helper to bold <strong> the word found - creating helper functions
+helpers do
+  def highlight(par, word)
+    par.gsub!(word,"(<strong>#{word}</strong>)")
+  end
+end
+
 # new - locate paragraphs
 def pars_matching(query)
   hsh_of_pars = Hash.new()
-  return list_of_pars if !query || query.empty?
+  return hsh_of_pars if !query || query.empty?
 
   (1..12).each do |num|
     chp_name = @contents[num - 1]

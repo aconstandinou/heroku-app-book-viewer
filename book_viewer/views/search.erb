@@ -16,9 +16,8 @@
         <ul>
           <h3><%=chp_name%></h3>
           <% array_pars.each do |par| %>
-            <ul>
-              <li><a href="/chapter/<%= par[0] %>"><%= par[1] %></a></li>
-            </ul>
+            #<!-- created helper method to highlight words within text -->
+            <li><a href="/chapter/<%= par[0] %>"><%= highlight(par[1], params[:query]) %></a></li>
           <% end %>
         </ul>
       <% end %>
