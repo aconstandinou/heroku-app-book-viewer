@@ -482,30 +482,86 @@ What to improve;
    match. Add 'id' attributes to each paragraph on the chapter page so they can be linked to
    by including 'id' as the anchor component of the appropriate link.
 
+# NOTES: realized that I wanted a hash where the key was the chapter name, and it carried
+#        an array as its value. Array included chapter number for our href and the par text.
+#        With that in place, we could nest loops in our erb file so that for each key
+#        in our Hash, a.k.a. our chapter title, we could then load our value array,
+#        and loop through each element of the array.
+#        This gave us the look we wanted in our HTML, specifically, chapter title
+#        followed by each paragraph that included our search word converted to an href
+#        link.
+
+   #book_viewer.rb
+   # new - locate paragraphs
+   def pars_matching(query)
+     hsh_of_pars = Hash.new()
+     return hsh_of_pars if !query || query.empty?
+
+     (1..12).each do |num|
+       chp_name = @contents[num - 1]
+       text_to_read = File.read("data/chp#{num}.txt")
+       text_to_read.split("\n\n").each do |par|
+         if par.include?(query)
+           (hsh_of_pars[chp_name] ||= []) << [num, par]
+         end
+       end
+     end
+
+     hsh_of_pars
+   end
+
+   # New code for our search bar
+   get "/search" do
+     @list_of_pars = pars_matching(params[:query])
+     erb :search
+   end
+
+   #search.erb
+   <h2 class="content-subhead">Search</h2>
+
+   <form action="/search" method="get">
+     <input name="query" value="<%= params[:query] %>">
+     <button type="submit">Search</button>
+   </form>
+
+   <% if params[:query] %>
+
+     <% if @list_of_pars.empty? %>
+       <p>Sorry, no matches were found.</p>
+     <% else %>
+       <h2 class="content-subhead">Results for '<%= params[:query] %>'</h2>
+       <ul>
+         <% @list_of_pars.each do |chp_name, array_pars| %>
+           <ul>
+             <h3><%=chp_name%></h3>
+             <% array_pars.each do |par| %>
+               #<!-- created helper method to highlight words within text -->
+               <li><a href="/chapter/<%= par[0] %>"><%= highlight(par[1], params[:query]) %></a></li>
+             <% end %>
+           </ul>
+         <% end %>
+       </ul>
+     <% end %>
+   <% end %>
 
 2. Use a view helper to highlight the matching text in each search result by
    wrapping it in <strong> tags.
 
+#NOTES: helper file would load in our paragraph and search query.
+#       We wanted to return a new paragraph text modified with the strong
+#       tag as seen below. When rendered in HTML, this would bolden the text.
 
+#      Notice how in our search.erb file, all we changed was what the Ruby
+#      rendered response would return. In this case its a string that is returned
+#      including our paragraph with the word surrounded by strong tags.
 
+   #line of code in search.erb
+   <li><a href="/chapter/<%= par[0] %>"><%= highlight(par[1], params[:query]) %></a></li>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-.
+   #book_viewer.rb
+   # helper to bold <strong> the word found - creating helper functions
+   helpers do
+     def highlight(par, word)
+       par.gsub!(word,"(<strong>#{word}</strong>)")
+     end
+   end
